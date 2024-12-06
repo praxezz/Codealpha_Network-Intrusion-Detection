@@ -1,0 +1,81 @@
+# Install necessary libraries
+!pip install scapy
+!pip install matplotlib
+!pip install scikit-learn
+
+# Import necessary libraries
+from scapy.all import sniff, IP, ICMP, Raw, send
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+# Function to analyze packets
+def packet_callback(packet):
+    # Detect HTTP GET requests
+    if packet.haslayer(IP) and packet.haslayer(Raw):
+        raw_data = packet.getlayer(Raw).load
+        if b"GET" in raw_data:
+            print(f"HTTP GET Request detected: {packet.summary()}")
+
+# Function to simulate DDoS attack (Ping Flood)
+def ddos_simulation(target_ip):
+    for i in range(100):  # Send 100 ping requests
+        pkt = IP(dst=target_ip)/ICMP()
+        send(pkt, verbose=0)
+
+# Capture network traffic (simulate using a callback)
+def capture_traffic():
+    print("Start capturing packets...")
+    # Sniffing 10 packets for simulation
+    packets = sniff(prn=packet_callback, count=10)
+    return packets
+
+# Visualize packet sizes over time
+def visualize_traffic(packets):
+    packet_sizes = [len(packet) for packet in packets]
+    plt.plot(packet_sizes)
+    plt.title("Packet Sizes Over Time")
+    plt.xlabel("Packet Number")
+    plt.ylabel("Packet Size (Bytes)")
+    plt.show()
+
+# Function for Machine Learning based Anomaly Detection
+def anomaly_detection(packets):
+    X = []
+    y = []
+
+    # Extract features and labels for packets with both IP and Raw layers
+    for packet in packets:
+        if packet.haslayer(IP) and packet.haslayer(Raw):
+            X.append([len(packet), packet[IP].proto])  # Packet size and protocol type
+            y.append(1 if b"GET" in packet.getlayer(Raw).load else 0)  # Label: 1 for HTTP GET, 0 for normal
+    
+    if len(X) > 0 and len(y) > 0:  # Ensure there are valid packets for model training
+        # Train a Random Forest model
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        model = RandomForestClassifier()
+        model.fit(X_train, y_train)
+
+        # Evaluate the model
+        accuracy = model.score(X_test, y_test)
+        print(f"Accuracy of the anomaly detection model: {accuracy * 100:.2f}%")
+    else:
+        print("No suitable packets for training.")
+
+# Main IDS Function
+def main():
+    # Simulate traffic capture and analysis
+    packets = capture_traffic()
+
+    # Visualize captured traffic
+    visualize_traffic(packets)
+
+    # Apply anomaly detection using machine learning
+    anomaly_detection(packets)
+
+    # Simulate DDoS attack (Ping flood simulation to target IP)
+    print("Simulating DDoS attack (Ping flood)...")
+    ddos_simulation("8.8.8.8")
+
+# Run the IDS simulation
+main()
